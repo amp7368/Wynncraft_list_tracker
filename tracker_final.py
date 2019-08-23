@@ -103,14 +103,31 @@ territories_cache = [[Territory('past', 'time_aquired', 'attacker_name', 'territ
 begun = [False]
 
 bot_user = ['bot_user']
-color = discord.colour.Color.from_rgb(255, 38, 38)
-AppleBot = 603084643943579657
-test_AppleBot = 608413989310824471
-login = 'NjAzMDg0NjQzOTQzNTc5NjU3.XTaQ4Q.eM9NDm3VlLAO7guCL-Hdhj7OqQs'
-test_login = 'NjA4NDEzOTg5MzEwODI0NDcx.XUn0Lg.Msu2FMqDJJhNmvL3pC_83YZOrn8'
-begin_channel = 607750451731103754
-appleptr16 = 253646208084475904
-respects = 612109809642242059
+
+with open('config.txt') as file:
+    i = 0
+    for line in file:
+        line = line.split("#")[0].strip()
+        if i == 0:
+            line = line.split(",")
+            color = discord.colour.Color.from_rgb(int(line[0]), int(line[1]), int(line[2]))
+        elif i == 1:
+            AppleBot = int(line)
+        elif i == 2:
+            test_AppleBot = int(line)
+        elif i == 3:
+            login = line
+        elif i == 4:
+            test_login = line
+        elif i == 5:
+            begin_channel = int(line)
+        elif i == 6:
+            debug_person = int(line)
+        elif i ==7:
+            respects = int(line)
+        else:
+            break
+        i += 1
 
 
 async def start(message):
