@@ -123,7 +123,7 @@ with open('config.txt') as file:
             begin_channel = int(line)
         elif i == 6:
             debug_person = int(line)
-        elif i ==7:
+        elif i == 7:
             respects = int(line)
         else:
             break
@@ -142,17 +142,16 @@ async def start(message):
                 begun[0] = True
                 await on_command_read_lists()
                 await on_command_begin()
+            else:
+                break
         except DisconnectException:
-            chan = client.get_channel(begin_channel)
-            begun[0] = False
             while True:
                 try:
-                    await chan.send("!begin")
+                    await client.get_channel(respects).send("Disconnected from the internet")
                 except client_exceptions.ClientOSError:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(2)
                     continue
                 break
-            break
         except MemoryError:
             print("ME")
         except:
@@ -160,11 +159,11 @@ async def start(message):
                 await client.get_channel(respects).send("F")
             except client_exceptions.ClientOSError:
                 pass
-            while True:
+
+            def send_trace():
                 string = traceback.format_exc()
                 traceback.print_exc()
                 msgs = list()
-                i = 0
                 while True:
                     if len(string) < 1998:
                         msgs.append(string)
@@ -174,39 +173,51 @@ async def start(message):
                         string = string[1997:]
                 for i in msgs:
                     try:
-                        await client.get_user(appleptr16).send(i)
+                        await client.get_user(debug_person).send(i)
                     except client_exceptions.ClientOSError:
                         await asyncio.sleep(1)
                         continue
 
-                break
-        finally:
+            send_trace()
             await asyncio.sleep(5)
             on_command_write_lists()
-            for cl in chart_messages:
-                for list_name in list(chart_messages[cl].keys()):
-                    try:
-                        await chart_messages[cl][list_name][0].channel.delete_messages(
-                            [chart_messages[cl][list_name][0]])
-                    except client_exceptions.ClientOSError:
-                        raise DisconnectException
-                    except:
-                        continue
-                for list_name in list(missing_messages[cl].keys()):
-                    try:
-                        await missing_messages[cl][list_name][0].channel.delete_messages(
-                            [missing_messages[cl][list_name][0]])
-                    except client_exceptions.ClientOSError:
-                        raise DisconnectException
-                    except:
-                        pass
-            print("Ended")
-        await asyncio.sleep(30)
-        chan = client.get_channel(begin_channel)
-        a = await chan.send("!begin")
-        del a
-        begun[0] = False
-        break
+            for j in range(2):
+                def del_messages():
+                    for cl in chart_messages:
+                        for list_name in list(chart_messages[cl].keys()):
+                            try:
+                                await chart_messages[cl][list_name][0].channel.delete_messages(
+                                    [chart_messages[cl][list_name][0]])
+                            except client_exceptions.ClientOSError:
+                                raise DisconnectException
+                            except:
+                                continue
+                        for list_name in list(missing_messages[cl].keys()):
+                            try:
+                                await missing_messages[cl][list_name][0].channel.delete_messages(
+                                    [missing_messages[cl][list_name][0]])
+                            except:
+                                pass
+
+                del_messages()
+
+            try:
+                await client.get_user(debug_person).send("Ended")
+            except:
+                pass
+
+            await asyncio.sleep(30)
+
+            while True:
+                try:
+                    chan = client.get_channel(begin_channel)
+                    begun[0] = False
+                    a = await chan.send("!begin")
+                    del a
+                except:
+                    continue
+                break
+            break
 
 
 @client.event
@@ -367,7 +378,7 @@ async def on_message(message):
         elif message.content.lower().startswith('!show'):
             a = await on_command_show_stuff(message)
             del a
-        elif message.content.lower() == '!end' and message.author.id == appleptr16:
+        elif message.content.lower() == '!end' and message.author.id == debug_person:
             on_command_write_lists()
             for cl in chart_messages:
                 for list_name in list(chart_messages[cl].keys()):
@@ -388,7 +399,7 @@ async def on_message(message):
                     except discord.errors.NotFound:
                         full_missing[cl] = None
 
-            await client.get_user(appleptr16).send("Ended")
+            await client.get_user(debug_person).send("Ended")
             sys.exit(0)
 
     except discord.errors.Forbidden:
@@ -404,24 +415,24 @@ async def on_command_inactivity(message):
     :param message: the message that the user sent
     :return:
     '''
-    msg = message.content.split(" ")
-
-    if len(msg) < 2:
-        await correct_command_inacitivity(message.channel)
-
     try:
+        msg = message.content.split(" ")
+
+        if len(msg) < 2:
+            await correct_command_inacitivity(message.channel)
+
         string = ''
         for i in msg[1:]:
             string += i + "%20"
         data = fetch_members(string.strip('%20'))
+        msgs = await make_message_inactivity(data, message.channel)
+        try:
+            for m in msgs:
+                await message.channel.send(m)
+        except client_exceptions.ClientOSError:
+            return
     except:
-        traceback.print_exc()
-        return
-    msgs = await make_message_inactivity(data, message.channel)
-    try:
-        for m in msgs:
-            await message.channel.send(m)
-    except client_exceptions.ClientOSError:
+        await message.channel.send("Try again 30 minutes from now")
         return
 
 
@@ -431,6 +442,7 @@ def fetch_members(guild_name):
     :param guild_name: the guild name of which we want the members
     :return: the read JSON API
     '''
+
     return loads(urllib.request.urlopen(
         'https://api.wynncraft.com/public_api.php?action=guildStats&command=' + guild_name).readline())
 
