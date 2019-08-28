@@ -12,8 +12,6 @@ import urllib.error
 import asyncio
 import sys
 import gc
-from json import loads
-from datetime import datetime
 
 client = discord.Client(max_messages=100)
 clients = dict()
@@ -347,8 +345,6 @@ async def on_message(message):
         if message.content.lower().startswith('!list'):
             a = await on_command_list(message)
             del a
-        elif message.content.lower().startswith('!inactivity'):
-            await on_command_inactivity(message)
         elif message.content.lower().startswith('!full_missing'):
             a = await on_command_full_missing(message)
             del a
@@ -408,53 +404,7 @@ async def on_message(message):
         raise DisconnectException
 
 
-async def on_command_inactivity(message):
-    '''
-    Start the inactivity procedure
-    because a person inputed that they wanted an inactivity report
-    :param message: the message that the user sent
-    :return:
-    '''
-    try:
-        msg = message.content.split(" ")
 
-        if len(msg) < 2:
-            await correct_command_inacitivity(message.channel)
-
-        string = ''
-        for i in msg[1:]:
-            string += i + "%20"
-        data = fetch_members(string.strip('%20'))
-        msgs = await make_message_inactivity(data, message.channel)
-        try:
-            for m in msgs:
-                await message.channel.send(m)
-        except client_exceptions.ClientOSError:
-            return
-    except:
-        await message.channel.send("Try again 30 minutes from now")
-        return
-
-
-def fetch_members(guild_name):
-    '''
-    get the information for the guild from the API
-    :param guild_name: the guild name of which we want the members
-    :return: the read JSON API
-    '''
-
-    return loads(urllib.request.urlopen(
-        'https://api.wynncraft.com/public_api.php?action=guildStats&command=' + guild_name).readline())
-
-
-def fetch_login(name):
-    '''
-    get the information for the player from the API
-    :param name: the player username
-    :return: the read JSON API for the player
-    '''
-    return loads(urllib.request.urlopen(
-        'https://api.wynncraft.com/v2/player/' + name + '/stats').readline())
 
 
 async def on_command_instructions(message):
@@ -1607,17 +1557,6 @@ async def correct_command_start_alert(channel):
         raise DisconnectException
 
 
-async def correct_command_inacitivity(channel):
-    '''
-    sends the correct usage of the !inactivity command
-    :param channel:
-    :return:
-    '''
-    try:
-        a = await channel.send("!inactivity <guild name>")
-        del a
-    except client_exceptions.ClientOSError:
-        raise DisconnectException
 
 
 async def is_not_a_list(list_name, chan):
@@ -1944,86 +1883,6 @@ async def run(author_id, list_name, territories_now, territories_past, guild_cou
                 chart_messages[author_id].__delitem__(list_name)
             except discord.errors.Forbidden:
                 chart_messages[author_id].__delitem__(list_name)
-
-
-async def make_message_inactivity(data, channel):
-    '''
-    Make a list of messages to be sent of the guilds inactivity report
-    :param data: the guild data from the API
-    :param channel: the channel to send the messages
-    :return: the list of messages of the inactivity report
-    '''
-    try:
-        time_now = data['request']['timestamp']
-    except KeyError:
-        return ['Not a guild']
-    except:
-        return ['Failed to get the inactivity list']
-    try:
-        progress_message = await channel.send('```' + '_' * 100 + '```')
-    except client_exceptions.ClientOSError:
-        return
-    messages = list()
-    string_message = '```ml\n'
-    string_message += '|    ' + "{:<30}".format(data['name'] + " Members") + '|  ' + "{:<23}".format(
-        "Rank") + '|  ' + "{:<23}".format("Time Inactive") + '|' + '\n'
-    string_message += ('+-----' + '-' * 29 + '+' + '-' * 25 + '+' + '-' * 25 + '+\n')
-    times = dict()
-    i = 0
-    length = len(data['members'])
-    for member in data['members']:
-        prog = int(i / length * 100)
-        try:
-            await progress_message.edit(content=('```' + '=' * prog) + ('_' * (100 - prog)) + '```')
-        except (discord.errors.NotFound, discord.errors.Forbidden, client_exceptions.ClientOSError):
-            pass
-
-        try:
-            tim = time_inactive(time_now, fetch_login(member['name']))
-            string = "{:<30}".format(member['name']) + '|  ' + "{:<23}".format(
-                member['rank'].lower()) + '|  ' + "{:<23}".format(str(tim) + " Days") + '|' + '\n'
-        except urllib.error.HTTPError:
-            tim = 0
-            string = "Unavailable \n"
-        if tim in times:
-            times[tim].append(string)
-        else:
-            times[tim] = [string]
-        i += 1
-    try:
-        await channel.delete_messages([progress_message])
-    except:
-        pass
-    member_number = 0
-    pg = 0
-    for t in sorted(times.keys()):
-        for i in range(len(times[t])):
-            string_message += "{:<5}".format('| ' + str(member_number + 1) + ".") + times[t][i]
-            if pg == 14:
-                messages.append(string_message + '```')
-                string_message = '```ml\n'
-                pg = 0
-            if pg % 5 == 4:
-                string_message += ('+-----' + '-' * 29 + '+' + '-' * 25 + '+' + '-' * 25 + '+\n')
-            pg += 1
-            member_number += 1
-    if string_message != '```ml\n':
-        messages.append(string_message + '```')
-    return messages
-
-
-def time_inactive(time_now, player_info):
-    '''
-    determine how long
-    :param time_now: the current time
-    :param player_info: the player's information that we are meant to find the time since login for
-    :return: how many days the player has been inactive
-    '''
-    login_time = player_info['data'][0]['meta']['lastJoin']
-    login_time = datetime(int(login_time[:4]), int(login_time[5:7]), int(login_time[8:10]))
-    time_now = datetime.fromtimestamp(time_now)
-    difference = time_now - login_time
-    return difference.days
 
 
 def make_message_terrs_missing(terrs_missing, time_now, page):
